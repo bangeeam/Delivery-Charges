@@ -1,0 +1,65 @@
+// Add custom shipping fee based on location
+add_action('woocommerce_cart_calculate_fees', 'custom_location_based_shipping', 20, 1);
+function custom_location_based_shipping($cart) {
+    if (is_admin() && !defined('DOING_AJAX')) return;
+
+    $shipping_cost = 0;
+    $shipping_city = WC()->customer->get_shipping_city();
+
+    // Major cities and their respective shipping fees
+    $major_cities = ['Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Hyderabad', 'Sukkur', 'Nawab Shah', 
+                     'Mirpurkhas', 'Thatta', 'Multan', 'Sahiwal', 'Kasur', 'Okara', 'Mian Channu', 'Gujarat', 
+                     'Bhawalpur', 'Jehlum', 'Sargodha', 'Attock', 'Wazirabad', 'Wah', 'Peshawar', 'Mardan', 
+                     'Swabi', 'Mansehra', 'Abbotabad', 'Swat', 'Quetta'];
+
+    // Karachi (Flat rate for entire Karachi)
+    if ($shipping_city == 'Karachi') {
+        $shipping_cost = 250; // Flat rate for Karachi
+    }
+    // Major Cities in Pakistan
+    elseif (in_array($shipping_city, $major_cities)) {
+        $shipping_cost = 350; // Flat rate for major cities
+    }
+    // Remote Areas
+    else {
+        $shipping_cost = 500; // Flat rate for remote areas
+    }
+
+    // Add the fee to the cart
+    WC()->cart->add_fee('Custom Shipping', $shipping_cost);
+}
+
+// Hide WooCommerce flat rate shipping when custom fee is applied
+add_filter('woocommerce_package_rates', 'hide_shipping_when_custom_fee_applied', 10, 2);
+function hide_shipping_when_custom_fee_applied($rates, $package) {
+    if (!is_admin()) {
+        $custom_shipping_fee = false;
+        
+        // Check if the custom location-based fee is applied
+        foreach (WC()->cart->get_fees() as $fee) {
+            if ($fee->name == 'Custom Shipping') {
+                $custom_shipping_fee = true;
+                break;
+            }
+        }
+
+        // Hide WooCommerce flat rate if custom shipping fee is applied
+        if ($custom_shipping_fee) {
+            foreach ($rates as $rate_key => $rate) {
+                if ($rate->method_id === 'flat_rate') {
+                    unset($rates[$rate_key]);  // Remove flat rate shipping methods
+                }
+            }
+        }
+    }
+    
+    return $rates;
+}
+// Add placeholder to "Postcode / Zip" field in WooCommerce checkout
+add_filter('woocommerce_checkout_fields', 'customize_postcode_placeholder');
+
+function customize_postcode_placeholder($fields) {
+    // Change the placeholder for billing postcode
+    $fields['billing']['billing_postcode']['placeholder'] = 'If you don\'t know your postcode, please type 12345';
+    return $fields;
+}"
